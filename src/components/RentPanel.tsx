@@ -152,7 +152,7 @@ export function RentPanel() {
           <Label htmlFor="rent-model">모델명 (선택)</Label>
           <Input
             id="rent-model"
-            placeholder="기본값 사용"
+            placeholder="YOLO - ViT"
             value={model}
             onChange={(e) => setModel(e.target.value)}
             disabled={loading}

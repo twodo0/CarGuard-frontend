@@ -126,7 +126,7 @@ export function DetectPanel() {
             <Label htmlFor="detect-model">모델명 (선택)</Label>
             <Input
               id="detect-model"
-              placeholder="기본값 사용"
+              placeholder="YOLO - ViT"
               value={model}
               onChange={(e) => setModel(e.target.value)}
               disabled={loading}

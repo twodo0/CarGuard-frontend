@@ -18,6 +18,37 @@ function buildQueryString(params: Record<string, string | number | undefined>): 
   return `?${queryString}`;
 }
 
+// 공통 에러 핸들러: 백엔드 message / error 필드 우선 사용
+async function handleErrorResponse(response: Response, defaultMessage: string): Promise<never> {
+  let message = defaultMessage;
+
+  try {
+    const cloned = response.clone();
+
+    // 1) JSON 시도
+    try {
+      const data = (await cloned.json()) as any;
+      if (data) {
+        if (typeof data.message === "string" && data.message.trim().length > 0) {
+          message = data.message;
+        } else if (typeof data.error === "string" && data.error.trim().length > 0) {
+          message = data.error;
+        }
+      }
+    } catch {
+      // 2) JSON 실패하면 text 시도
+      const text = await cloned.text();
+      if (text && text.trim().length > 0) {
+        message = text;
+      }
+    }
+  } catch {
+    // body 읽다가 또 에러 나면 그냥 defaultMessage 사용
+  }
+
+  throw new Error(message);
+}
+
 // Upload image
 export async function uploadImage(file: File): Promise<ImageUploadResponse> {
   const formData = new FormData();
@@ -29,7 +60,7 @@ export async function uploadImage(file: File): Promise<ImageUploadResponse> {
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to upload image: ${response.statusText}`);
+    return handleErrorResponse(response, "이미지 업로드에 실패했습니다.");
   }
 
   return response.json();
@@ -53,7 +84,7 @@ export async function createPredictionJob(
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to create prediction job: ${response.statusText}`);
+    return handleErrorResponse(response, "예측 작업 생성에 실패했습니다.");
   }
 
   return response.json();
@@ -79,6 +110,7 @@ export async function pollJobStatus(jobId: number): Promise<PredictionDetail> {
     }
 
     if (response.status === 422) {
+      // 여기만 기존 로직 유지: 백엔드가 message 내려준다고 가정
       const error = await response.json();
       throw new Error(error.message || "Prediction failed");
     }
@@ -105,56 +137,57 @@ export async function startRental(
     model: model,
   });
 
-  console.log("Starting rental with URL:", `${API_BASE}/rentals/start/upload${query}`);
+  const url = `${API_BASE}/rentals/start/upload${query}`;
+  console.log("Starting rental with URL:", url);
 
-  const response = await fetch(`${API_BASE}/rentals/start/upload${query}`, {
+  const response = await fetch(url, {
     method: "POST",
   });
 
-  console.log("Rental response status:", response.status);
-  console.log("Rental response headers:", Object.fromEntries(response.headers.entries()));
-
   if (!response.ok) {
-    const errorText = await response.text();
-    console.error("Rental error response:", errorText);
-    throw new Error(`Failed to start rental: ${response.status} - ${errorText}`);
+    // 백엔드 예외 메시지(IllegalArgumentException 등)를 최대한 그대로 사용
+    return handleErrorResponse(response, "렌탈을 시작하는 중 오류가 발생했습니다.");
   }
 
-  const responseText = await response.text();
-  console.log("Rental response body:", responseText);
-
-  try {
-    const jsonData = JSON.parse(responseText);
-    console.log("Parsed rental data:", jsonData);
-    return jsonData;
-  } catch (e) {
-    console.error("Failed to parse rental response:", e);
-    throw new Error(`Invalid JSON response: ${responseText}`);
-  }
+  return response.json();
 }
 
 // Rental finish
 export async function finishRental(
   rentalId: number,
   imageId: number,
+  vehicleNo: string,
   yoloThreshold?: number,
   vitThreshold?: number,
   model?: string
 ): Promise<RentalFinishResponse> {
+  console.log("[finishRental args]", {
+    rentalId,
+    imageId,
+    vehicleNo,
+    yoloThreshold,
+    vitThreshold,
+    model,
+  });
+
   const query = buildQueryString({
     rentalId: rentalId,
     imageId: imageId,
+    vehicleNo: vehicleNo,
     yoloThreshold: yoloThreshold,
     vitThreshold: vitThreshold,
     model: model,
   });
 
-  const response = await fetch(`${API_BASE}/rentals/end/upload${query}`, {
+  const url = `${API_BASE}/rentals/end/upload${query}`;
+  console.log("[finishRental] request URL:", url);
+
+  const response = await fetch(url, {
     method: "POST",
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to finish rental: ${response.statusText}`);
+    return handleErrorResponse(response, "렌탈을 종료하는 중 오류가 발생했습니다.");
   }
 
   return response.json();
@@ -170,7 +203,7 @@ export async function getRecentPredictions(
   const response = await fetch(`${API_BASE}/predictions/recent${query}`);
 
   if (!response.ok) {
-    throw new Error(`Failed to fetch recent predictions: ${response.statusText}`);
+    return handleErrorResponse(response, "최근 예측 목록을 불러오지 못했습니다.");
   }
 
   return response.json();

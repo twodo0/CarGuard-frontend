@@ -28,10 +28,10 @@ export function ReturnPanel() {
   }, []);
 
   const handleSubmit = async () => {
-    if (!file || !rentalId.trim()) {
+    if (!file || !rentalId.trim() || !vehicleNo.trim()) {
       toast({
         title: "입력 오류",
-        description: "이미지와 렌탈 ID를 모두 입력해주세요",
+        description: "이미지와 렌탈 ID, 차량번호를 모두 입력해주세요",
         variant: "destructive",
       });
       return;
@@ -51,6 +51,7 @@ export function ReturnPanel() {
       const rentalResponse = await finishRental(
         parseInt(rentalId),
         imageResponse.imageId,
+        vehicleNo.trim(),
         yoloThreshold ? parseFloat(yoloThreshold) : undefined,
         vitThreshold ? parseFloat(vitThreshold) : undefined,
         model || undefined
@@ -140,7 +141,7 @@ export function ReturnPanel() {
         </div>
 
         <div>
-          <Label htmlFor="return-vehicle-no">차량번호 (검증용, 선택)</Label>
+          <Label htmlFor="return-vehicle-no">차량번호 (필수)</Label>
           <Input
             id="return-vehicle-no"
             placeholder="예: 12가3456"
@@ -181,7 +182,7 @@ export function ReturnPanel() {
           <Label htmlFor="return-model">모델명 (선택)</Label>
           <Input
             id="return-model"
-            placeholder="기본값 사용"
+            placeholder="YOLO - ViT"
             value={model}
             onChange={(e) => setModel(e.target.value)}
             disabled={loading}
@@ -190,7 +191,7 @@ export function ReturnPanel() {
 
         <Button
           onClick={handleSubmit}
-          disabled={loading || !file || !rentalId.trim()}
+          disabled={loading || !file || !rentalId.trim() || !vehicleNo.trim()}
           className="w-full bg-gradient-to-r from-primary to-accent"
         >
           {loading ? (
