@@ -1,13 +1,12 @@
 import { Button } from "./ui/button";
-import { Car, Shield, Search } from "lucide-react";
+import { Car, Shield } from "lucide-react";
 
 interface HeroProps {
   onRentClick: () => void;
   onReturnClick: () => void;
-  onDetectClick: () => void;
 }
 
-export function Hero({ onRentClick, onReturnClick, onDetectClick }: HeroProps) {
+export function Hero({ onRentClick, onReturnClick }: HeroProps) {
   return (
     <section id="hero" className="min-h-screen flex items-center justify-center pt-16 px-4">
       <div className="container mx-auto text-center">
@@ -42,16 +41,6 @@ export function Hero({ onRentClick, onReturnClick, onDetectClick }: HeroProps) {
           >
             <Shield className="mr-2 h-5 w-5" />
             반납하기
-          </Button>
-          
-          <Button
-            size="lg"
-            variant="outline"
-            onClick={onDetectClick}
-            className="w-full sm:w-auto border-primary text-primary hover:bg-primary hover:text-primary-foreground transition-all transform hover:scale-105"
-          >
-            <Search className="mr-2 h-5 w-5" />
-            데미지 탐지
           </Button>
         </div>
       </div>

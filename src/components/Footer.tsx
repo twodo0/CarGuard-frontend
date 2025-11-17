@@ -1,5 +1,3 @@
-import { Heart } from "lucide-react";
-
 export function Footer() {
   return (
     <footer className="py-8 px-4 border-t border-border">

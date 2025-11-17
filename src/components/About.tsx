@@ -1,55 +1,39 @@
-import { Brain, Zap, Shield } from "lucide-react";
-import { Card, CardContent } from "./ui/card";
+import { Shield, Zap, FileCheck } from "lucide-react";
 
 export function About() {
-  const features = [
-    {
-      icon: Brain,
-      title: "AI",
-      description: "AI 모델을 활용한 정확한 손상 탐지",
-    },
-    {
-      icon: Zap,
-      title: "실시간 분석",
-      description: "빠르고 정확한 실시간 이미지 분석",
-    },
-    {
-      icon: Shield,
-      title: "신뢰성",
-      description: "렌터카 대여/반납 시 분쟁 방지",
-    },
-  ];
-
   return (
     <section id="about" className="py-20 px-4">
       <div className="container mx-auto">
-        <div className="text-center mb-16">
-          <h2 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            왜 CarGuard AI인가?
-          </h2>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            최첨단 AI 기술로 차량 손상을 자동으로 감지하고, 렌터카 서비스의 신뢰성을 높입니다
-          </p>
-        </div>
-
+        <h2 className="text-4xl font-bold text-center mb-12">
+          <span className="bg-gradient-to-r from-secondary to-primary bg-clip-text text-transparent">
+            CarGuard AI란?
+          </span>
+        </h2>
+        
         <div className="grid md:grid-cols-3 gap-8">
-          {features.map((feature, index) => {
-            const Icon = feature.icon;
-            return (
-              <Card
-                key={index}
-                className="border-2 hover:border-primary transition-all duration-300 hover:shadow-lg transform hover:scale-105"
-              >
-                <CardContent className="p-8 text-center">
-                  <div className="mb-4 inline-block p-4 bg-gradient-to-br from-secondary/20 to-primary/20 rounded-full">
-                    <Icon className="h-10 w-10 text-primary" />
-                  </div>
-                  <h3 className="text-xl font-bold mb-2">{feature.title}</h3>
-                  <p className="text-muted-foreground">{feature.description}</p>
-                </CardContent>
-              </Card>
-            );
-          })}
+          <div className="text-center p-6">
+            <Shield className="h-12 w-12 text-primary mx-auto mb-4" />
+            <h3 className="text-xl font-bold mb-2">정확한 기록</h3>
+            <p className="text-muted-foreground">
+              렌터카 대여 시점의 차량 상태를 정확하게 기록하여 분쟁을 예방합니다
+            </p>
+          </div>
+          
+          <div className="text-center p-6">
+            <Zap className="h-12 w-12 text-accent mx-auto mb-4" />
+            <h3 className="text-xl font-bold mb-2">AI 자동 탐지</h3>
+            <p className="text-muted-foreground">
+              최신 AI 기술로 파손, 찌그러짐, 스크래치 등을 자동으로 탐지합니다
+            </p>
+          </div>
+          
+          <div className="text-center p-6">
+            <FileCheck className="h-12 w-12 text-secondary mx-auto mb-4" />
+            <h3 className="text-xl font-bold mb-2">간편한 관리</h3>
+            <p className="text-muted-foreground">
+              대여부터 반납까지 모든 과정을 한 곳에서 관리하고 조회할 수 있습니다
+            </p>
+          </div>
         </div>
       </div>
     </section>
