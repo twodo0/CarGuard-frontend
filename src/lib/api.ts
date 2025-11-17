@@ -1,25 +1,18 @@
-import {
-  ImageUploadResponse,
-  JobResponse,
-  PredictionDetail,
-  RentalStartResponse,
-  RentalFinishResponse,
-  PageResponse,
-  RecentPrediction,
-} from "@/types/api";
+// API utility functions
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8888/api";
+const API_BASE = import.meta.env.VITE_API_BASE || "/api";
 
-// Helper to build query params (only add if value exists)
-function buildQueryString(params: Record<string, string | number | undefined>): string {
-  const entries = Object.entries(params).filter(([_, value]) => value !== undefined && value !== "");
-  if (entries.length === 0) return "";
-  const queryString = entries.map(([key, value]) => `${key}=${encodeURIComponent(String(value))}`).join("&");
-  return `?${queryString}`;
+async function handleResponse<T>(response: Response): Promise<T> {
+  if (!response.ok) {
+    // Extract clean error message without stack traces
+    const data = await response.json().catch(() => null);
+    const msg = data?.message || data?.error || data?.detail || (await response.text().catch(() => ''));
+    throw new Error(msg || '요청 실패');
+  }
+  return response.json();
 }
 
-// Upload image
-export async function uploadImage(file: File): Promise<ImageUploadResponse> {
+export async function uploadImage(file: File): Promise<{ imageId: number }> {
   const formData = new FormData();
   formData.append("file", file);
 
@@ -28,150 +21,87 @@ export async function uploadImage(file: File): Promise<ImageUploadResponse> {
     body: formData,
   });
 
-  if (!response.ok) {
-    throw new Error(`Failed to upload image: ${response.statusText}`);
-  }
-
-  return response.json();
+  return handleResponse(response);
 }
 
-// Create prediction job
-export async function createPredictionJob(
-  imageId: number,
-  yoloThreshold?: number,
-  vitThreshold?: number,
-  model?: string
-): Promise<JobResponse> {
-  const query = buildQueryString({
-    yoloThreshold: yoloThreshold,
-    vitThreshold: vitThreshold,
-    model: model,
-  });
-
-  const response = await fetch(`${API_BASE}/predictions/by-image/${imageId}${query}`, {
+export async function startRentalBatch(req: any): Promise<any> {
+  const response = await fetch(`${API_BASE}/rentals/batch/start/upload`, {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(req),
   });
 
-  if (!response.ok) {
-    throw new Error(`Failed to create prediction job: ${response.statusText}`);
-  }
-
-  return response.json();
+  return handleResponse(response);
 }
 
-// Poll job status
-export async function pollJobStatus(jobId: number): Promise<PredictionDetail> {
-  let attempts = 0;
-  const maxAttempts = 60; // 60 seconds max
-
-  while (attempts < maxAttempts) {
-    const response = await fetch(`${API_BASE}/predictions/jobs/${jobId}`);
-
-    if (response.status === 202) {
-      // Still processing, wait 1 second
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      attempts++;
-      continue;
-    }
-
-    if (response.status === 200) {
-      return response.json();
-    }
-
-    if (response.status === 422) {
-      const error = await response.json();
-      throw new Error(error.message || "Prediction failed");
-    }
-
-    throw new Error(`Unexpected status: ${response.status}`);
-  }
-
-  throw new Error("Job polling timeout");
-}
-
-// Rental start
-export async function startRental(
-  imageId: number,
-  vehicleNo: string,
-  yoloThreshold?: number,
-  vitThreshold?: number,
-  model?: string
-): Promise<RentalStartResponse> {
-  const query = buildQueryString({
-    imageId: imageId,
-    vehicleNo: vehicleNo,
-    yoloThreshold: yoloThreshold,
-    vitThreshold: vitThreshold,
-    model: model,
-  });
-
-  console.log("Starting rental with URL:", `${API_BASE}/rentals/start/upload${query}`);
-
-  const response = await fetch(`${API_BASE}/rentals/start/upload${query}`, {
+export async function finishRentalBatch(req: any): Promise<any> {
+  const response = await fetch(`${API_BASE}/rentals/batch/end/upload`, {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(req),
   });
 
-  console.log("Rental response status:", response.status);
-  console.log("Rental response headers:", Object.fromEntries(response.headers.entries()));
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error("Rental error response:", errorText);
-    throw new Error(`Failed to start rental: ${response.status} - ${errorText}`);
-  }
-
-  const responseText = await response.text();
-  console.log("Rental response body:", responseText);
-
-  try {
-    const jsonData = JSON.parse(responseText);
-    console.log("Parsed rental data:", jsonData);
-    return jsonData;
-  } catch (e) {
-    console.error("Failed to parse rental response:", e);
-    throw new Error(`Invalid JSON response: ${responseText}`);
-  }
+  return handleResponse(response);
 }
 
-// Rental finish
-export async function finishRental(
-  rentalId: number,
+export async function getRecentRentals(page = 0, size = 20): Promise<any> {
+  const response = await fetch(`${API_BASE}/rentals/recent?page=${page}&size=${size}`);
+  return handleResponse(response);
+}
+
+export async function getRentalDetail(id: number, phase?: "START" | "END"): Promise<any> {
+  const url = phase
+    ? `${API_BASE}/rentals/${id}?phase=${phase}`
+    : `${API_BASE}/rentals/${id}`;
+  const response = await fetch(url);
+  return handleResponse(response);
+}
+
+export async function detectByImageId(
   imageId: number,
-  yoloThreshold?: number,
-  vitThreshold?: number,
-  model?: string
-): Promise<RentalFinishResponse> {
-  const query = buildQueryString({
-    rentalId: rentalId,
-    imageId: imageId,
-    yoloThreshold: yoloThreshold,
-    vitThreshold: vitThreshold,
-    model: model,
-  });
-
-  const response = await fetch(`${API_BASE}/rentals/end/upload${query}`, {
-    method: "POST",
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to finish rental: ${response.statusText}`);
-  }
-
-  return response.json();
+  yoloThreshold = 0.3
+): Promise<{ jobId: string }> {
+  const response = await fetch(
+    `${API_BASE}/predictions/by-image/${imageId}?yoloThreshold=${yoloThreshold}`,
+    { method: "POST" }
+  );
+  return handleResponse(response);
 }
 
-// Get recent predictions
-export async function getRecentPredictions(
-  page: number = 0,
-  size: number = 12
-): Promise<PageResponse<RecentPrediction>> {
-  const query = buildQueryString({ page, size });
-
-  const response = await fetch(`${API_BASE}/predictions/recent${query}`);
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch recent predictions: ${response.statusText}`);
+export async function pollJob(jobId: string): Promise<any> {
+  const response = await fetch(`${API_BASE}/predictions/jobs/${jobId}`);
+  
+  if (response.status === 202) {
+    // Still processing
+    const retryAfter = response.headers.get("Retry-After") || "1";
+    await new Promise(resolve => setTimeout(resolve, parseInt(retryAfter) * 1000));
+    return pollJob(jobId); // Retry
   }
 
+  if (response.status === 422) {
+    const error = await response.json();
+    throw new Error(error.message || "Validation error");
+  }
+
+  return handleResponse(response);
+}
+
+export async function getPredictionDetail(predictionId: number): Promise<any> {
+  const response = await fetch(`${API_BASE}/predictions/jobs/${predictionId}`);
+  
+  if (response.status === 202) {
+    throw new Error('예측이 아직 준비되지 않았습니다.');
+  }
+  
+  if (response.status === 422) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body?.message || '예측에 실패했습니다.');
+  }
+  
+  if (!response.ok) {
+    const text = await response.text().catch(() => '');
+    throw new Error(text || `서버 오류(${response.status})`);
+  }
+  
   return response.json();
 }
